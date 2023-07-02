@@ -1,0 +1,140 @@
+import time
+
+from selenium import webdriver
+from selenium.webdriver.chrome.webdriver import WebDriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException
+from googletrans import Translator
+from openpyxl import Workbook
+import pandas as pd
+
+from env import URL, DriverLocation
+
+
+def counter():
+    result = driver.find_element(By.CLASS_NAME,'jANrlb').find_element(By.CLASS_NAME,'fontBodySmall').text
+    result = result.replace(',', '')
+    result = "".join(result.split())
+    result = result.split(':')
+    # result = result[0].split(':')
+    return int(int(result[1])/10)+1
+
+
+def scrolling(counter):
+    print('scrolling...')
+    scrollable_div = driver.find_element("xpath",
+        '//div[@class="lXJj5c Hk4XGb "]')
+    for _i in range(counter):
+        scrolling = driver.execute_script(
+            'document.getElementsByClassName("dS8AEf")[0].scrollTop = document.getElementsByClassName("dS8AEf")[0].scrollHeight',
+            scrollable_div
+        )
+        time.sleep(3)
+
+
+def get_data(driver):
+    """
+    this function get main text, score, name
+    """
+    print('get data...')
+    # more_elemets = driver.find_element(By.CLASS_NAME,'w8nwRe kyuRq')
+    # for list_more_element in more_elemets:
+    #     list_more_element.click()
+    
+    # elements = driver.find_elements("xpath",
+    #     '//div[@class="jftiEf fontBodyMedium "]')
+    # driver.find_elements(By.XPATH, '//button[text()="Some text"]')
+    # driver.find_elements(By.CLASS_NAME, "tomatoes")
+    elements = driver.find_elements(By.XPATH, '//div[@class="jftiEf fontBodyMedium "]')
+    # print("elements = ", elements)
+    lst_data = []
+    translator = Translator()
+    for data in elements:
+        name = data.find_element(By.CLASS_NAME,
+            'd4r55').text
+        try:
+            text_element = data.find_element(By.CLASS_NAME,
+             'RfnDt')
+            text = text_element.text
+            reviews_number = ''.join(filter(str.isdigit, text))
+        except NoSuchElementException:
+            reviews_number = 0    
+        # text = data.find_element(By.CLASS_NAME,
+        #      'RfnDt').text
+        # text = data.find_element(By.XPATH,
+        #     './/div[@class="MyEned"]/span[2]').text
+        # reviews_number = ''.join(filter(str.isdigit, text))
+        try:
+            comment_element = data.find_element(By.CLASS_NAME,
+                'wiI7pd')
+            comment = comment_element.text
+        except NoSuchElementException:
+            comment = ""
+        # comment = comment_element.text if comment_element else ""
+        # translated_comment = translator.translate(" Название: Разочарован отсутствием улучшений в Google", dest='en')
+        try:
+            score_element = data.find_element(By.CLASS_NAME,
+            'kvMYJc')
+            score = score_element.get_attribute("aria-label")
+            stars_number = ''.join(filter(str.isdigit, score))
+        except NoSuchElementException:
+            stars_number = 0        
+        # score = data.find_element(By.XPATH,
+        #     './/span[@class="kvMYJc"]').get_attribute("aria-label")
+        # score = data.find_element(By.CLASS_NAME,
+        #     'kvMYJc').get_attribute("aria-label")
+        # stars_number = ''.join(filter(str.isdigit, score))
+        # print("name = ", name)
+        # print("reviews_number = ", reviews_number)
+        # print("comment = ", comment)
+        # # print("translated_comment = ", translated_comment)
+        # print("score = ", stars_number)
+
+        lst_data.append([name + " from GoogleMaps", str(reviews_number) + " reviews", comment, str(stars_number) + " stars"])
+
+    return lst_data
+
+
+def write_to_xlsx(data):
+    print('write to excel...')
+    # cols = ["name", "comment", 'rating']
+    cols = ["name", "reviews", "comments", 'rating']
+    df = pd.DataFrame(data, columns=cols)
+    df.to_excel('out.xlsx')
+
+
+if __name__ == "__main__":
+
+    print('starting...')
+    # options = webdriver.ChromeOptions()
+    options = Options()    
+    options.add_argument("--headless")  # show browser or not
+    options.add_argument("--lang=en-US")
+    options.add_experimental_option('prefs', {'intl.accept_languages': 'en,en_US'})
+    DriverPath = DriverLocation
+    driver = webdriver.Chrome(options)
+    # driver.execute_script("document.documentElement.lang = 'en';")
+
+    driver.get(URL)
+    driver.implicitly_wait(5)
+    # action_chains = ActionChains(driver)
+    # action_chains.key_down(Keys.F12).key_up(Keys.F12).perform()
+    # time.sleep(2)  # Wait for DevTools to open
+    # action_chains.send_keys(Keys.F1).perform()
+    # time.sleep(2)  # Wait for Network Conditions tab to open
+    # action_chains.send_keys("Accept-Language: en\r").perform()  # Change the value as desired
+    # time.sleep(2)
+    # time.sleep(5)
+
+    counter = counter()
+    print(counter)
+    scrolling(counter)
+
+    data = get_data(driver)
+    driver.close()
+
+    write_to_xlsx(data)
+    print('Done!')
